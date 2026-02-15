@@ -10,6 +10,21 @@ namespace PlaywrightWindows.Mcp.Tools;
 /// </summary>
 public class SendKeysTool : ToolBase
 {
+    private static readonly VirtualKeyShort[] ModifierKeys =
+    {
+        VirtualKeyShort.CONTROL,
+        VirtualKeyShort.LCONTROL,
+        VirtualKeyShort.RCONTROL,
+        VirtualKeyShort.SHIFT,
+        VirtualKeyShort.LSHIFT,
+        VirtualKeyShort.RSHIFT,
+        VirtualKeyShort.ALT,
+        VirtualKeyShort.LMENU,
+        VirtualKeyShort.RMENU,
+        VirtualKeyShort.LWIN,
+        VirtualKeyShort.RWIN
+    };
+
     private static readonly Dictionary<string, VirtualKeyShort> KeyMap = new(StringComparer.OrdinalIgnoreCase)
     {
         ["ctrl"] = VirtualKeyShort.CONTROL,
@@ -82,22 +97,49 @@ public class SendKeysTool : ToolBase
         ["6"] = VirtualKeyShort.KEY_6,
         ["7"] = VirtualKeyShort.KEY_7,
         ["8"] = VirtualKeyShort.KEY_8,
-        ["9"] = VirtualKeyShort.KEY_9
+        ["9"] = VirtualKeyShort.KEY_9,
+        ["backspace"] = VirtualKeyShort.BACK,
+        ["bksp"] = VirtualKeyShort.BACK,
+        ["delete"] = VirtualKeyShort.DELETE,
+        ["del"] = VirtualKeyShort.DELETE,
+        ["insert"] = VirtualKeyShort.INSERT,
+        ["ins"] = VirtualKeyShort.INSERT,
+        ["win"] = VirtualKeyShort.LWIN,
+        ["windows"] = VirtualKeyShort.LWIN,
+        ["meta"] = VirtualKeyShort.LWIN,
+        ["printscreen"] = VirtualKeyShort.SNAPSHOT,
+        ["prtsc"] = VirtualKeyShort.SNAPSHOT,
+        ["prtscr"] = VirtualKeyShort.SNAPSHOT,
+        ["pause"] = VirtualKeyShort.PAUSE,
+        ["break"] = VirtualKeyShort.PAUSE
     };
 
     private readonly ElementRegistry _elementRegistry;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="SendKeysTool"/> class.
+    /// </summary>
+    /// <param name="elementRegistry">Registry used to resolve element references for focus targeting.</param>
     public SendKeysTool(ElementRegistry elementRegistry)
     {
         _elementRegistry = elementRegistry;
     }
 
+    /// <summary>
+    /// Gets the MCP tool name.
+    /// </summary>
     public override string Name => "windows_send_keys";
 
+    /// <summary>
+    /// Gets the MCP tool description.
+    /// </summary>
     public override string Description =>
         "Send key presses or key chords to an element by ref or the focused element. " +
-        "Supports either `chord` (e.g., Ctrl+Right) or `keys` array (e.g., [\"Ctrl\",\"Right\"]).";
+        "Supports either `chord` (single chord, e.g., Ctrl+Right) or `keys` array (sequence, e.g., [\"Ctrl+C\",\"Ctrl+V\"]).";
 
+    /// <summary>
+    /// Gets the JSON schema for tool inputs.
+    /// </summary>
     public override object InputSchema => new
     {
         type = "object",
@@ -116,7 +158,7 @@ public class SendKeysTool : ToolBase
             keys = new
             {
                 type = "array",
-                description = "Array of key names, e.g. ['Ctrl', 'Right']. Items may also contain '+' separated chords.",
+                description = "Sequence of key presses/chords, e.g. ['Ctrl+C', 'Ctrl+V', 'Enter'].",
                 items = new
                 {
                     type = "string"
@@ -125,15 +167,27 @@ public class SendKeysTool : ToolBase
         }
     };
 
+    /// <summary>
+    /// Executes the key sending action.
+    /// </summary>
+    /// <param name="arguments">Tool arguments containing optional target ref and either chord or keys.</param>
+    /// <returns>An MCP result with operation status or error details.</returns>
     public override Task<McpToolResult> ExecuteAsync(JsonElement? arguments)
     {
         var refId = GetStringArgument(arguments, "ref");
         var chord = GetStringArgument(arguments, "chord");
         var keyList = GetArgument<List<string>>(arguments, "keys");
+        var hasChord = !string.IsNullOrWhiteSpace(chord);
+        var hasKeys = keyList != null && keyList.Count > 0;
 
-        if (string.IsNullOrWhiteSpace(chord) && (keyList == null || keyList.Count == 0))
+        if (!hasChord && !hasKeys)
         {
             return Task.FromResult(ErrorResult("Provide either chord or keys."));
+        }
+
+        if (hasChord && hasKeys)
+        {
+            return Task.FromResult(ErrorResult("Provide either chord or keys, not both."));
         }
 
         try
@@ -150,50 +204,99 @@ public class SendKeysTool : ToolBase
                 Thread.Sleep(50);
             }
 
-            var tokens = new List<string>();
-            if (!string.IsNullOrWhiteSpace(chord))
+            if (hasChord)
             {
-                tokens.AddRange(SplitChord(chord));
-            }
-            if (keyList != null)
-            {
-                foreach (var item in keyList)
+                var chordTokens = SplitChord(chord).ToList();
+                if (chordTokens.Count == 0)
                 {
-                    tokens.AddRange(SplitChord(item));
+                    return Task.FromResult(ErrorResult("No keys were parsed from chord."));
                 }
-            }
 
-            if (tokens.Count == 0)
-            {
-                return Task.FromResult(ErrorResult("No keys were parsed from chord/keys."));
-            }
-
-            var keys = new List<VirtualKeyShort>();
-            foreach (var token in tokens)
-            {
-                if (!TryMapKey(token, out var virtualKey))
+                var chordKeys = TryResolveKeys(chordTokens, out var chordError);
+                if (chordError != null)
                 {
-                    return Task.FromResult(ErrorResult($"Unsupported key: {token}"));
+                    return Task.FromResult(ErrorResult(chordError));
                 }
-                keys.Add(virtualKey);
+
+                PressKeys(chordKeys);
+
+                var targetForChord = string.IsNullOrWhiteSpace(refId) ? "focused element" : refId;
+                var chordText = string.Join("+", chordTokens);
+                return Task.FromResult(TextResult($"Sent keys {chordText} to {targetForChord}"));
             }
 
-            if (keys.Count == 1)
+            var actions = new List<string>();
+            foreach (var item in keyList!)
             {
-                Keyboard.Press(keys[0]);
-            }
-            else
-            {
-                Keyboard.TypeSimultaneously(keys.ToArray());
+                var stepTokens = SplitChord(item).ToList();
+                if (stepTokens.Count == 0)
+                {
+                    return Task.FromResult(ErrorResult("No keys were parsed from keys sequence."));
+                }
+
+                var stepKeys = TryResolveKeys(stepTokens, out var stepError);
+                if (stepError != null)
+                {
+                    return Task.FromResult(ErrorResult(stepError));
+                }
+
+                PressKeys(stepKeys);
+                actions.Add(string.Join("+", stepTokens));
+                Thread.Sleep(30);
             }
 
-            var target = string.IsNullOrWhiteSpace(refId) ? "focused element" : refId;
-            var chordText = string.Join("+", tokens);
-            return Task.FromResult(TextResult($"Sent keys {chordText} to {target}"));
+            var targetName = string.IsNullOrWhiteSpace(refId) ? "focused element" : refId;
+            return Task.FromResult(TextResult($"Sent key sequence [{string.Join(", ", actions)}] to {targetName}"));
         }
         catch (Exception ex)
         {
             return Task.FromResult(ErrorResult($"Failed to send keys: {ex.Message}"));
+        }
+    }
+
+    private static List<VirtualKeyShort> TryResolveKeys(List<string> tokens, out string? error)
+    {
+        var keys = new List<VirtualKeyShort>();
+        foreach (var token in tokens)
+        {
+            if (!TryMapKey(token, out var virtualKey))
+            {
+                error = $"Unsupported key: {token}";
+                return keys;
+            }
+
+            keys.Add(virtualKey);
+        }
+
+        error = null;
+        return keys;
+    }
+
+    private static void PressKeys(List<VirtualKeyShort> keys)
+    {
+        try
+        {
+            if (keys.Count == 1)
+            {
+                Keyboard.Press(keys[0]);
+                Thread.Sleep(10);
+                Keyboard.Release(keys[0]);
+                return;
+            }
+
+            Keyboard.TypeSimultaneously(keys.ToArray());
+        }
+        finally
+        {
+            ReleaseAllModifiers();
+        }
+    }
+
+    private static void ReleaseAllModifiers()
+    {
+        foreach (var modifier in ModifierKeys)
+        {
+            Keyboard.Release(modifier);
         }
     }
 
