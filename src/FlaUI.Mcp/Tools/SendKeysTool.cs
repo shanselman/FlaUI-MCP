@@ -274,6 +274,7 @@ public class SendKeysTool : ToolBase
 
     private static void PressKeys(List<VirtualKeyShort> keys)
     {
+        var pressedModifiers = keys.Where(k => ModifierKeys.Contains(k)).ToList();
         try
         {
             if (keys.Count == 1)
@@ -288,15 +289,10 @@ public class SendKeysTool : ToolBase
         }
         finally
         {
-            ReleaseAllModifiers();
-        }
-    }
-
-    private static void ReleaseAllModifiers()
-    {
-        foreach (var modifier in ModifierKeys)
-        {
-            Keyboard.Release(modifier);
+            foreach (var mod in pressedModifiers)
+            {
+                Keyboard.Release(mod);
+            }
         }
     }
 
