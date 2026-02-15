@@ -1,28 +1,40 @@
 using System.Text.Json;
+using FlaUI.Core.AutomationElements;
 using FlaUI.Core.Capturing;
 using PlaywrightWindows.Mcp.Core;
 
 namespace PlaywrightWindows.Mcp.Tools;
 
 /// <summary>
-/// Take a screenshot
+/// MCP tool that captures screenshots of windows, elements, or the full screen.
+/// Window-level captures use native PrintWindow for background-friendly capture,
+/// falling back to standard FlaUI capture when unavailable.
 /// </summary>
 public class ScreenshotTool : ToolBase
 {
     private readonly SessionManager _sessionManager;
     private readonly ElementRegistry _elementRegistry;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ScreenshotTool"/> class.
+    /// </summary>
+    /// <param name="sessionManager">The session manager for window lookups.</param>
+    /// <param name="elementRegistry">The element registry for ref-based element lookups.</param>
     public ScreenshotTool(SessionManager sessionManager, ElementRegistry elementRegistry)
     {
         _sessionManager = sessionManager;
         _elementRegistry = elementRegistry;
     }
 
+    /// <inheritdoc />
     public override string Name => "windows_screenshot";
 
+    /// <inheritdoc />
     public override string Description => 
-        "Take a screenshot of a window or specific element. Returns the image as base64-encoded PNG.";
+        "Take a screenshot of a window or specific element. Returns the image as base64-encoded PNG. " +
+        "Window captures attempt a background-friendly native capture first, then fall back to standard capture.";
 
+    /// <inheritdoc />
     public override object InputSchema => new
     {
         type = "object",
@@ -46,6 +58,7 @@ public class ScreenshotTool : ToolBase
         }
     };
 
+    /// <inheritdoc />
     public override Task<McpToolResult> ExecuteAsync(JsonElement? arguments)
     {
         var handle = GetStringArgument(arguments, "handle");
@@ -76,6 +89,12 @@ public class ScreenshotTool : ToolBase
                 {
                     return Task.FromResult(ErrorResult($"Window not found: {handle}"));
                 }
+
+                if (NativeWindowCapture.TryCaptureWindow(window, out var backgroundImage, out _))
+                {
+                    return Task.FromResult(ImageResult(backgroundImage, "image/png"));
+                }
+
                 capture = Capture.Element(window);
             }
             else
@@ -97,6 +116,12 @@ public class ScreenshotTool : ToolBase
                 if (current == null)
                 {
                     return Task.FromResult(ErrorResult("Could not find window for focused element"));
+                }
+
+                var currentWindow = current.AsWindow();
+                if (currentWindow != null && NativeWindowCapture.TryCaptureWindow(currentWindow, out var backgroundImage, out _))
+                {
+                    return Task.FromResult(ImageResult(backgroundImage, "image/png"));
                 }
 
                 capture = Capture.Element(current);
