@@ -95,6 +95,7 @@ Or using `dotnet run`:
 | `windows_snapshot` | Get accessibility tree with element refs |
 | `windows_click` | Click an element by ref |
 | `windows_type` | Type text into an element |
+| `windows_send_keys` | Send key presses or key chords (e.g. Ctrl+Right) |
 | `windows_fill` | Clear and fill a text field |
 | `windows_get_text` | Get text content of an element |
 | `windows_screenshot` | Capture window/element as PNG |

@@ -5,6 +5,13 @@ All notable changes to FlaUI-MCP will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- `windows_send_keys` MCP tool for sending key presses and key chords (for example `Ctrl+Right`, `Alt+F4`, and media keys)
+- Registration of `windows_send_keys` in the server tool registry
+- README documentation entry for the new tool in the Available Tools table
+
 ## [0.1.0] - 2024-02-02
 
 ### Added

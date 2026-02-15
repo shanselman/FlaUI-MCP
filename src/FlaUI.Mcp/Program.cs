@@ -12,6 +12,7 @@ toolRegistry.RegisterTool(new LaunchTool(sessionManager));
 toolRegistry.RegisterTool(new SnapshotTool(sessionManager, elementRegistry));
 toolRegistry.RegisterTool(new ClickTool(elementRegistry));
 toolRegistry.RegisterTool(new TypeTool(elementRegistry));
+toolRegistry.RegisterTool(new SendKeysTool(elementRegistry));
 toolRegistry.RegisterTool(new FillTool(elementRegistry));
 toolRegistry.RegisterTool(new GetTextTool(elementRegistry));
 toolRegistry.RegisterTool(new ScreenshotTool(sessionManager, elementRegistry));
