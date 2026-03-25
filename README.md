@@ -97,7 +97,7 @@ Or using `dotnet run`:
 | `windows_type` | Type text into an element |
 | `windows_fill` | Clear and fill a text field |
 | `windows_get_text` | Get text content of an element |
-| `windows_screenshot` | Capture window/element as PNG |
+| `windows_screenshot` | Capture window/element as PNG (optionally save to file) |
 | `windows_list_windows` | List all open windows |
 | `windows_focus` | Bring a window to foreground |
 | `windows_close` | Close a window |

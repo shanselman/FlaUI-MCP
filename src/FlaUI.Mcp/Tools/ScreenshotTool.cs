@@ -42,6 +42,11 @@ public class ScreenshotTool : ToolBase
             {
                 type = "boolean",
                 description = "Capture the entire screen (default: false)"
+            },
+            savePath = new
+            {
+                type = "string",
+                description = "Absolute file path to save the screenshot PNG. If omitted, image is returned inline only."
             }
         }
     };
@@ -51,6 +56,13 @@ public class ScreenshotTool : ToolBase
         var handle = GetStringArgument(arguments, "handle");
         var refId = GetStringArgument(arguments, "ref");
         var fullScreen = GetBoolArgument(arguments, "fullScreen", false);
+        var savePath = GetStringArgument(arguments, "savePath");
+
+        // Validate savePath is absolute if provided
+        if (!string.IsNullOrEmpty(savePath) && !Path.IsPathFullyQualified(savePath))
+        {
+            return Task.FromResult(ErrorResult($"savePath must be an absolute path: {savePath}"));
+        }
 
         try
         {
@@ -105,6 +117,42 @@ public class ScreenshotTool : ToolBase
             using var stream = new MemoryStream();
             capture.Bitmap.Save(stream, System.Drawing.Imaging.ImageFormat.Png);
             var imageData = stream.ToArray();
+
+            // Save to file if savePath is provided
+            if (!string.IsNullOrEmpty(savePath))
+            {
+                try
+                {
+                    var directory = Path.GetDirectoryName(savePath);
+                    if (!string.IsNullOrEmpty(directory))
+                    {
+                        Directory.CreateDirectory(directory);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    return Task.FromResult(ErrorResult($"Failed to create directory for screenshot: {ex.Message}"));
+                }
+
+                try
+                {
+                    File.WriteAllBytes(savePath, imageData);
+                }
+                catch (Exception ex)
+                {
+                    return Task.FromResult(ErrorResult($"Failed to save screenshot to {savePath}: {ex.Message}"));
+                }
+
+                var absolutePath = Path.GetFullPath(savePath);
+                return Task.FromResult(new McpToolResult
+                {
+                    Content = new List<McpContent>
+                    {
+                        new() { Type = "text", Text = $"Screenshot saved to {absolutePath}" },
+                        new() { Type = "image", Data = Convert.ToBase64String(imageData), MimeType = "image/png" }
+                    }
+                });
+            }
 
             return Task.FromResult(ImageResult(imageData, "image/png"));
         }
