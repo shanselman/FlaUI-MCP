@@ -147,6 +147,21 @@ dotnet build src/FlaUI.Mcp
 dotnet run --project src/FlaUI.Mcp
 ```
 
+## Testing
+
+The project includes integration tests that launch purpose-built WinForms and WPF test applications and exercise the MCP tools against real Windows UI controls.
+
+```powershell
+# Build the test apps first
+dotnet build tests/TestApps/WinFormsTestApp
+dotnet build tests/TestApps/WpfTestApp
+
+# Run integration tests
+dotnet test tests/FlaUI.Mcp.IntegrationTests
+```
+
+> **Note:** Tests require a Windows desktop environment (they launch GUI applications) and cannot run in headless CI.
+
 ## Architecture
 
 ```
