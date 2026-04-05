@@ -1,5 +1,4 @@
-using System.Text.Json;
-using PlaywrightWindows.Mcp;
+using System.Diagnostics;
 using PlaywrightWindows.Mcp.Core;
 using PlaywrightWindows.Mcp.Tools;
 using Xunit.Abstractions;
@@ -21,59 +20,34 @@ public class ClickTests
         _output = output;
     }
 
-    private async Task<string> CallTool(ToolBase tool, object args)
-    {
-        var json = JsonSerializer.Serialize(args, McpProtocol.JsonOptions);
-        var element = JsonSerializer.Deserialize<JsonElement>(json);
-        var result = await tool.ExecuteAsync(element);
-        var text = result.Content.FirstOrDefault()?.Text ?? "";
-        _output.WriteLine($"Result: {text}");
-        return text;
-    }
-
-    private string? FindRefByName(string handle, string name)
-    {
-        var builder = new SnapshotBuilder(_fixture.Elements);
-        var window = _fixture.Session.GetWindow(handle)!;
-        var snapshot = builder.BuildSnapshot(handle, window);
-        // Parse snapshot to find ref for element with given name
-        foreach (var line in snapshot.Split('\n'))
-        {
-            if (line.Contains($"\"{name}\"") && line.Contains("[ref="))
-            {
-                var refStart = line.IndexOf("[ref=") + 5;
-                var refEnd = line.IndexOf("]", refStart);
-                return line[refStart..refEnd];
-            }
-        }
-        return null;
-    }
-
     [Fact]
     public async Task WinForms_Click_Button_Invoke()
     {
-        var buttonRef = FindRefByName(_fixture.WinFormsHandle, "Click Me");
+        var buttonRef = _fixture.FindRefByName(_fixture.WinFormsHandle, "Click Me");
         Assert.NotNull(buttonRef);
         _output.WriteLine($"Click Me button ref: {buttonRef}");
 
         var tool = new ClickTool(_fixture.Elements);
-        var result = await CallTool(tool, new { @ref = buttonRef });
+        var result = await _fixture.CallTool(tool, new { @ref = buttonRef });
+        _output.WriteLine($"Result: {result}");
         Assert.Contains("Invoked", result);
     }
 
     [Fact]
     public async Task WinForms_Click_Checkbox_Toggle()
     {
-        var cbRef = FindRefByName(_fixture.WinFormsHandle, "Enable the button below");
+        var cbRef = _fixture.FindRefByName(_fixture.WinFormsHandle, "Enable the button below");
         Assert.NotNull(cbRef);
 
         var tool = new ClickTool(_fixture.Elements);
-        var result = await CallTool(tool, new { @ref = cbRef });
+        var result = await _fixture.CallTool(tool, new { @ref = cbRef });
+        _output.WriteLine($"Result: {result}");
         // WinForms checkboxes support InvokePattern, so ClickTool uses Invoke (not Toggle)
-        Assert.True(result.Contains("Invoked") || result.Contains("Toggled"), $"Expected Invoked or Toggled, got: {result}");
+        Assert.True(result.Contains("Invoked") || result.Contains("Toggled"),
+            $"Expected Invoked or Toggled, got: {result}");
 
         // Toggle back to original state
-        await CallTool(tool, new { @ref = cbRef });
+        await _fixture.CallTool(tool, new { @ref = cbRef });
     }
 
     [Fact]
@@ -91,21 +65,19 @@ public class ClickTests
         }
 
         // Find the checkbox and button refs
-        var cbRef = FindRefByName(_fixture.WinFormsHandle, "Enable the button below");
-        var btnRef = FindRefByName(_fixture.WinFormsHandle, "Conditional Button");
+        var cbRef = _fixture.FindRefByName(_fixture.WinFormsHandle, "Enable the button below");
         Assert.NotNull(cbRef);
-        Assert.NotNull(btnRef);
 
         // Verify button is initially disabled
         Assert.Contains("disabled", snapshot1.Split('\n').First(l => l.Contains("Conditional Button")));
 
         // Click the checkbox to enable the button
         var clickTool = new ClickTool(_fixture.Elements);
-        await CallTool(clickTool, new { @ref = cbRef });
+        await _fixture.CallTool(clickTool, new { @ref = cbRef });
 
-        // Poll for the button to become enabled instead of using a fixed delay
+        // Poll for the button to become enabled
         string snapshot2 = "";
-        var sw = System.Diagnostics.Stopwatch.StartNew();
+        var sw = Stopwatch.StartNew();
         while (sw.ElapsedMilliseconds < 5000)
         {
             await Task.Delay(100);
@@ -128,18 +100,19 @@ public class ClickTests
         Assert.DoesNotContain("disabled", conditionalLine);
 
         // Clean up: uncheck the checkbox
-        await CallTool(clickTool, new { @ref = cbRef });
+        await _fixture.CallTool(clickTool, new { @ref = cbRef });
     }
 
     [Fact]
     public async Task Wpf_Click_Button_Invoke()
     {
-        var buttonRef = FindRefByName(_fixture.WpfHandle, "Click Me");
+        var buttonRef = _fixture.FindRefByName(_fixture.WpfHandle, "Click Me");
         Assert.NotNull(buttonRef);
         _output.WriteLine($"Click Me button ref: {buttonRef}");
 
         var tool = new ClickTool(_fixture.Elements);
-        var result = await CallTool(tool, new { @ref = buttonRef });
+        var result = await _fixture.CallTool(tool, new { @ref = buttonRef });
+        _output.WriteLine($"Result: {result}");
         Assert.Contains("Invoked", result);
     }
 }

@@ -1,21 +1,26 @@
 using System.Diagnostics;
+using System.Text.Json;
 using FlaUI.Core.AutomationElements;
 using FlaUI.Core.Definitions;
+using PlaywrightWindows.Mcp;
 using PlaywrightWindows.Mcp.Core;
+using PlaywrightWindows.Mcp.Tools;
+using Xunit.Abstractions;
 
 namespace FlaUI.Mcp.IntegrationTests;
 
 /// <summary>
 /// Shared fixture that launches the WinForms and WPF test apps once per test collection.
 /// Provides SessionManager and ElementRegistry for all tests to share.
+/// Implements IAsyncLifetime for proper async setup/teardown.
 /// </summary>
-public class TestAppFixture : IDisposable
+public class TestAppFixture : IAsyncLifetime
 {
     private const int WindowPollIntervalMs = 250;
     private const int WindowPollTimeoutMs = 15000;
 
-    public SessionManager Session { get; }
-    public ElementRegistry Elements { get; }
+    public SessionManager Session { get; } = new();
+    public ElementRegistry Elements { get; } = new();
 
     public string WinFormsHandle { get; private set; } = "";
     public string WpfHandle { get; private set; } = "";
@@ -23,20 +28,24 @@ public class TestAppFixture : IDisposable
     private Process? _winFormsProcess;
     private Process? _wpfProcess;
 
-    public TestAppFixture()
+    public async Task InitializeAsync()
     {
-        Session = new SessionManager();
-        Elements = new ElementRegistry();
+        var winFormsPath = FindTestAppPath("WinFormsTestApp")
+            ?? throw new Exception(
+                "WinFormsTestApp not found. Build it first: dotnet build tests/TestApps/WinFormsTestApp");
+        var wpfPath = FindTestAppPath("WpfTestApp")
+            ?? throw new Exception(
+                "WpfTestApp not found. Build it first: dotnet build tests/TestApps/WpfTestApp");
 
-        _winFormsProcess = LaunchTestApp(FindTestAppPath("WinFormsTestApp"));
-        _wpfProcess = LaunchTestApp(FindTestAppPath("WpfTestApp"));
+        _winFormsProcess = LaunchTestApp(winFormsPath);
+        _wpfProcess = LaunchTestApp(wpfPath);
 
         // Poll for both windows to appear
         var sw = Stopwatch.StartNew();
         while (sw.ElapsedMilliseconds < WindowPollTimeoutMs
                && (WinFormsHandle == "" || WpfHandle == ""))
         {
-            Thread.Sleep(WindowPollIntervalMs);
+            await Task.Delay(WindowPollIntervalMs);
 
             var desktop = Session.Automation.GetDesktop();
             var windows = desktop.FindAllChildren(cf => cf.ByControlType(ControlType.Window));
@@ -53,20 +62,29 @@ public class TestAppFixture : IDisposable
                 }
             }
         }
+
+        if (WinFormsHandle == "")
+            throw new Exception("Timed out waiting for WinForms test app window.");
+        if (WpfHandle == "")
+            throw new Exception("Timed out waiting for WPF test app window.");
     }
 
-    private static Process? LaunchTestApp(string? path)
+    public Task DisposeAsync()
     {
-        if (path == null) return null;
+        CloseProcess(_winFormsProcess);
+        CloseProcess(_wpfProcess);
+        Session.Dispose();
+        return Task.CompletedTask;
+    }
 
+    private static Process? LaunchTestApp(string path)
+    {
         var psi = new ProcessStartInfo(path) { UseShellExecute = true };
         return Process.Start(psi);
     }
 
     private static string? FindTestAppPath(string appName)
     {
-        // Search for the built test app executable
-        // Look relative to the integration test assembly location
         var baseDir = AppContext.BaseDirectory;
 
         // Walk up to find the repo root (contains src/)
@@ -78,14 +96,10 @@ public class TestAppFixture : IDisposable
 
         if (dir == null) return null;
 
-        // Look for the test app in its build output
         var searchPaths = new[]
         {
-            // WinForms app (net481)
             Path.Combine(dir.FullName, "tests", "TestApps", appName, "bin", "Debug", "net481", $"{appName}.exe"),
-            // WPF app (net8.0-windows)
             Path.Combine(dir.FullName, "tests", "TestApps", appName, "bin", "Debug", "net8.0-windows", $"{appName}.exe"),
-            // Release builds
             Path.Combine(dir.FullName, "tests", "TestApps", appName, "bin", "Release", "net481", $"{appName}.exe"),
             Path.Combine(dir.FullName, "tests", "TestApps", appName, "bin", "Release", "net8.0-windows", $"{appName}.exe"),
         };
@@ -96,11 +110,37 @@ public class TestAppFixture : IDisposable
     public Window? GetWinFormsWindow() => Session.GetWindow(WinFormsHandle);
     public Window? GetWpfWindow() => Session.GetWindow(WpfHandle);
 
-    public void Dispose()
+    /// <summary>
+    /// Call an MCP tool with the given arguments and return the text result.
+    /// Shared helper to avoid duplication across test classes.
+    /// </summary>
+    public async Task<string> CallTool(ToolBase tool, object args)
     {
-        CloseProcess(_winFormsProcess);
-        CloseProcess(_wpfProcess);
-        Session.Dispose();
+        var json = JsonSerializer.Serialize(args, McpProtocol.JsonOptions);
+        var element = JsonSerializer.Deserialize<JsonElement>(json);
+        var result = await tool.ExecuteAsync(element);
+        return result.Content.FirstOrDefault()?.Text ?? "";
+    }
+
+    /// <summary>
+    /// Find an element ref by name in the snapshot of the given window.
+    /// Shared helper to avoid duplication across test classes.
+    /// </summary>
+    public string? FindRefByName(string handle, string name)
+    {
+        var builder = new SnapshotBuilder(Elements);
+        var window = Session.GetWindow(handle)!;
+        var snapshot = builder.BuildSnapshot(handle, window);
+        foreach (var line in snapshot.Split('\n'))
+        {
+            if (line.Contains($"\"{name}\"") && line.Contains("[ref="))
+            {
+                var refStart = line.IndexOf("[ref=") + 5;
+                var refEnd = line.IndexOf("]", refStart);
+                return line[refStart..refEnd];
+            }
+        }
+        return null;
     }
 
     private static void CloseProcess(Process? process)
