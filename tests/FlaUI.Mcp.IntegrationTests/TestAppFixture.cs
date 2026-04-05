@@ -5,7 +5,6 @@ using FlaUI.Core.Definitions;
 using PlaywrightWindows.Mcp;
 using PlaywrightWindows.Mcp.Core;
 using PlaywrightWindows.Mcp.Tools;
-using Xunit.Abstractions;
 
 namespace FlaUI.Mcp.IntegrationTests;
 
@@ -123,14 +122,32 @@ public class TestAppFixture : IAsyncLifetime
     }
 
     /// <summary>
-    /// Find an element ref by name in the snapshot of the given window.
-    /// Shared helper to avoid duplication across test classes.
+    /// Take a snapshot of a window and return the text.
     /// </summary>
-    public string? FindRefByName(string handle, string name)
+    public string TakeSnapshot(string handle)
     {
         var builder = new SnapshotBuilder(Elements);
         var window = Session.GetWindow(handle)!;
-        var snapshot = builder.BuildSnapshot(handle, window);
+        return builder.BuildSnapshot(handle, window);
+    }
+
+    /// <summary>
+    /// Find an element ref by name in the snapshot of the given window.
+    /// Takes a fresh snapshot each time — use the overload accepting a
+    /// pre-built snapshot when multiple lookups are needed.
+    /// </summary>
+    public string? FindRefByName(string handle, string name)
+    {
+        var snapshot = TakeSnapshot(handle);
+        return FindRefInSnapshot(snapshot, name);
+    }
+
+    /// <summary>
+    /// Find an element ref by name in a pre-built snapshot string.
+    /// Use this when making multiple lookups against the same snapshot.
+    /// </summary>
+    public static string? FindRefInSnapshot(string snapshot, string name)
+    {
         foreach (var line in snapshot.Split('\n'))
         {
             if (line.Contains($"\"{name}\"") && line.Contains("[ref="))

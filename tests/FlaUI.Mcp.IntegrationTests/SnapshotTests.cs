@@ -1,5 +1,3 @@
-using System.Text.Json;
-using PlaywrightWindows.Mcp;
 using PlaywrightWindows.Mcp.Core;
 using PlaywrightWindows.Mcp.Tools;
 using Xunit.Abstractions;
@@ -82,32 +80,26 @@ public class SnapshotTests
     public async Task WinForms_Snapshot_ContainsGridData()
     {
         // Navigate to Grid tab first — WinForms only shows active tab content
-        var builder = new SnapshotBuilder(_fixture.Elements);
-        var snapshot = builder.BuildSnapshot(_fixture.WinFormsHandle, _fixture.GetWinFormsWindow()!);
-        string? gridTabRef = null;
-        foreach (var line in snapshot.Split('\n'))
+        var snapshot = _fixture.TakeSnapshot(_fixture.WinFormsHandle);
+        var gridTabRef = TestAppFixture.FindRefInSnapshot(snapshot, "Grid");
+
+        Assert.NotNull(gridTabRef);
+
+        var clickTool = new ClickTool(_fixture.Elements);
+        await _fixture.CallTool(clickTool, new { @ref = gridTabRef });
+
+        // Poll for grid content to appear after tab switch
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        string snapshot2 = "";
+        while (sw.ElapsedMilliseconds < 5000)
         {
-            // Find the "Grid" tab (not the grid itself)
-            if (line.Contains("\"Grid\"") && line.Contains("tab ") && line.Contains("[ref="))
-            {
-                var s = line.IndexOf("[ref=") + 5;
-                gridTabRef = line[s..line.IndexOf("]", s)];
+            await Task.Delay(100);
+            snapshot2 = _fixture.TakeSnapshot(_fixture.WinFormsHandle);
+            if (snapshot2.Contains("Test Data"))
                 break;
-            }
         }
 
-        if (gridTabRef != null)
-        {
-            var clickTool = new ClickTool(_fixture.Elements);
-            var json = JsonSerializer.Serialize(new { @ref = gridTabRef }, McpProtocol.JsonOptions);
-            await clickTool.ExecuteAsync(JsonSerializer.Deserialize<JsonElement>(json));
-            await Task.Delay(500);
-        }
-
-        // Re-snapshot after navigating to Grid tab
-        var snapshot2 = builder.BuildSnapshot(_fixture.WinFormsHandle, _fixture.GetWinFormsWindow()!);
-        _output.WriteLine(snapshot2.Substring(0, Math.Min(2000, snapshot2.Length)));
-
+        _output.WriteLine(snapshot2[..Math.Min(2000, snapshot2.Length)]);
         Assert.Contains("Test Data", snapshot2);
     }
 }

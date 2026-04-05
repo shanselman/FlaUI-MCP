@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using PlaywrightWindows.Mcp.Tools;
 using Xunit.Abstractions;
 
@@ -18,25 +19,35 @@ public class TextAndValueTests
         _output = output;
     }
 
+    /// <summary>
+    /// Navigate to a tab and poll until an expected element appears.
+    /// Returns the ref of the expected element.
+    /// </summary>
+    private async Task<string> NavigateToTabAndFind(string windowHandle, string tabName, string elementName)
+    {
+        var tabRef = _fixture.FindRefByName(windowHandle, tabName);
+        Assert.NotNull(tabRef);
+
+        var clickTool = new ClickTool(_fixture.Elements);
+        await _fixture.CallTool(clickTool, new { @ref = tabRef });
+
+        // Poll for the element to appear after tab switch
+        var sw = Stopwatch.StartNew();
+        while (sw.ElapsedMilliseconds < 5000)
+        {
+            await Task.Delay(100);
+            var found = _fixture.FindRefByName(windowHandle, elementName);
+            if (found != null) return found;
+        }
+
+        Assert.Fail($"Element \"{elementName}\" not found after navigating to \"{tabName}\" tab.");
+        return ""; // unreachable
+    }
+
     [Fact]
     public async Task WinForms_GetText_ReadOnlyField()
     {
-        // Navigate to Forms tab first by finding and clicking it
-        var tabRef = _fixture.FindRefByName(_fixture.WinFormsHandle, "Forms");
-        if (tabRef != null)
-        {
-            var clickTool = new ClickTool(_fixture.Elements);
-            await _fixture.CallTool(clickTool, new { @ref = tabRef });
-            await Task.Delay(300);
-        }
-
-        // Re-snapshot after tab switch
-        var resultRef = _fixture.FindRefByName(_fixture.WinFormsHandle, "Result");
-        if (resultRef == null)
-        {
-            _output.WriteLine("SKIP: Could not find Result text box");
-            return;
-        }
+        var resultRef = await NavigateToTabAndFind(_fixture.WinFormsHandle, "Forms", "Result");
 
         var tool = new GetTextTool(_fixture.Elements);
         var text = await _fixture.CallTool(tool, new { @ref = resultRef });
@@ -47,21 +58,7 @@ public class TextAndValueTests
     [Fact]
     public async Task WinForms_TypeAndGetText()
     {
-        // Navigate to Forms tab
-        var tabRef = _fixture.FindRefByName(_fixture.WinFormsHandle, "Forms");
-        if (tabRef != null)
-        {
-            var clickTool = new ClickTool(_fixture.Elements);
-            await _fixture.CallTool(clickTool, new { @ref = tabRef });
-            await Task.Delay(300);
-        }
-
-        var nameRef = _fixture.FindRefByName(_fixture.WinFormsHandle, "Name");
-        if (nameRef == null)
-        {
-            _output.WriteLine("SKIP: Could not find Name text box");
-            return;
-        }
+        var nameRef = await NavigateToTabAndFind(_fixture.WinFormsHandle, "Forms", "Name");
 
         // Fill the name field
         var fillTool = new FillTool(_fixture.Elements);
@@ -81,21 +78,7 @@ public class TextAndValueTests
     [Fact]
     public async Task Wpf_GetText_ReadOnlyField()
     {
-        // Navigate to Forms tab
-        var tabRef = _fixture.FindRefByName(_fixture.WpfHandle, "Forms");
-        if (tabRef != null)
-        {
-            var clickTool = new ClickTool(_fixture.Elements);
-            await _fixture.CallTool(clickTool, new { @ref = tabRef });
-            await Task.Delay(300);
-        }
-
-        var resultRef = _fixture.FindRefByName(_fixture.WpfHandle, "Result");
-        if (resultRef == null)
-        {
-            _output.WriteLine("SKIP: Could not find Result text box");
-            return;
-        }
+        var resultRef = await NavigateToTabAndFind(_fixture.WpfHandle, "Forms", "Result");
 
         var tool = new GetTextTool(_fixture.Elements);
         var text = await _fixture.CallTool(tool, new { @ref = resultRef });

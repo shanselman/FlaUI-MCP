@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using PlaywrightWindows.Mcp.Core;
 using PlaywrightWindows.Mcp.Tools;
 using Xunit.Abstractions;
 
@@ -53,10 +52,8 @@ public class ClickTests
     [Fact]
     public async Task WinForms_EnabledStateChanges_AfterCheckboxClick()
     {
-        // First snapshot to find refs
-        var builder = new SnapshotBuilder(_fixture.Elements);
-        var window = _fixture.GetWinFormsWindow()!;
-        var snapshot1 = builder.BuildSnapshot(_fixture.WinFormsHandle, window);
+        // Take one snapshot and find both refs from it
+        var snapshot1 = _fixture.TakeSnapshot(_fixture.WinFormsHandle);
         _output.WriteLine("Initial snapshot (partial):");
         foreach (var line in snapshot1.Split('\n'))
         {
@@ -64,8 +61,7 @@ public class ClickTests
                 _output.WriteLine(line);
         }
 
-        // Find the checkbox and button refs
-        var cbRef = _fixture.FindRefByName(_fixture.WinFormsHandle, "Enable the button below");
+        var cbRef = TestAppFixture.FindRefInSnapshot(snapshot1, "Enable the button below");
         Assert.NotNull(cbRef);
 
         // Verify button is initially disabled
@@ -81,7 +77,7 @@ public class ClickTests
         while (sw.ElapsedMilliseconds < 5000)
         {
             await Task.Delay(100);
-            snapshot2 = builder.BuildSnapshot(_fixture.WinFormsHandle, window);
+            snapshot2 = _fixture.TakeSnapshot(_fixture.WinFormsHandle);
             var line = snapshot2.Split('\n').FirstOrDefault(l => l.Contains("Conditional Button"));
             if (line != null && !line.Contains("disabled"))
                 break;

@@ -264,7 +264,7 @@ namespace WinFormsTestApp
                     $"ITEM-{i + 1:D3}",
                     $"Test Item {i + 1}",
                     categories[i % categories.Length],
-                    $"{rng.Next(1, 1000):F2}"
+                    $"{rng.Next(1, 1000)}"
                 );
             }
 
