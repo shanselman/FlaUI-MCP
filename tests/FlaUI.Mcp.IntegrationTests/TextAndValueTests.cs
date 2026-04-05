@@ -33,8 +33,6 @@ public class TextAndValueTests
     {
         var builder = new SnapshotBuilder(_fixture.Elements);
         var window = _fixture.Session.GetWindow(handle)!;
-        builder.BuildSnapshot(handle, window);
-        // Search snapshot lines for the name
         var snapshot = builder.BuildSnapshot(handle, window);
         foreach (var line in snapshot.Split('\n'))
         {

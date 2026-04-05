@@ -102,10 +102,18 @@ public class ClickTests
         // Click the checkbox to enable the button
         var clickTool = new ClickTool(_fixture.Elements);
         await CallTool(clickTool, new { @ref = cbRef });
-        await Task.Delay(500);
 
-        // Re-snapshot to check updated state
-        var snapshot2 = builder.BuildSnapshot(_fixture.WinFormsHandle, window);
+        // Poll for the button to become enabled instead of using a fixed delay
+        string snapshot2 = "";
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        while (sw.ElapsedMilliseconds < 5000)
+        {
+            await Task.Delay(100);
+            snapshot2 = builder.BuildSnapshot(_fixture.WinFormsHandle, window);
+            var line = snapshot2.Split('\n').FirstOrDefault(l => l.Contains("Conditional Button"));
+            if (line != null && !line.Contains("disabled"))
+                break;
+        }
         _output.WriteLine("\nAfter checkbox click:");
         foreach (var line in snapshot2.Split('\n'))
         {

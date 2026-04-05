@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Runtime.CompilerServices;
 using FlaUI.Core.AutomationElements;
 using FlaUI.Core.Definitions;
 using PlaywrightWindows.Mcp.Core;
@@ -12,6 +11,9 @@ namespace FlaUI.Mcp.IntegrationTests;
 /// </summary>
 public class TestAppFixture : IDisposable
 {
+    private const int WindowPollIntervalMs = 250;
+    private const int WindowPollTimeoutMs = 15000;
+
     public SessionManager Session { get; }
     public ElementRegistry Elements { get; }
 
@@ -29,21 +31,26 @@ public class TestAppFixture : IDisposable
         _winFormsProcess = LaunchTestApp(FindTestAppPath("WinFormsTestApp"));
         _wpfProcess = LaunchTestApp(FindTestAppPath("WpfTestApp"));
 
-        // Wait for windows to appear and register them
-        Thread.Sleep(3000);
-
-        var desktop = Session.Automation.GetDesktop();
-        var windows = desktop.FindAllChildren(cf => cf.ByControlType(ControlType.Window));
-        foreach (var w in windows)
+        // Poll for both windows to appear
+        var sw = Stopwatch.StartNew();
+        while (sw.ElapsedMilliseconds < WindowPollTimeoutMs
+               && (WinFormsHandle == "" || WpfHandle == ""))
         {
-            var win = w.AsWindow();
-            if (win?.Title == "FlaUI-MCP Test App")
+            Thread.Sleep(WindowPollIntervalMs);
+
+            var desktop = Session.Automation.GetDesktop();
+            var windows = desktop.FindAllChildren(cf => cf.ByControlType(ControlType.Window));
+            foreach (var w in windows)
             {
-                WinFormsHandle = Session.RegisterWindow(win);
-            }
-            else if (win?.Title == "FlaUI-MCP WPF Test App")
-            {
-                WpfHandle = Session.RegisterWindow(win);
+                var win = w.AsWindow();
+                if (win?.Title == "FlaUI-MCP Test App" && WinFormsHandle == "")
+                {
+                    WinFormsHandle = Session.RegisterWindow(win);
+                }
+                else if (win?.Title == "FlaUI-MCP WPF Test App" && WpfHandle == "")
+                {
+                    WpfHandle = Session.RegisterWindow(win);
+                }
             }
         }
     }
@@ -91,9 +98,26 @@ public class TestAppFixture : IDisposable
 
     public void Dispose()
     {
-        try { _winFormsProcess?.Kill(); } catch { }
-        try { _wpfProcess?.Kill(); } catch { }
+        CloseProcess(_winFormsProcess);
+        CloseProcess(_wpfProcess);
         Session.Dispose();
+    }
+
+    private static void CloseProcess(Process? process)
+    {
+        if (process == null || process.HasExited) return;
+        try
+        {
+            process.CloseMainWindow();
+            if (!process.WaitForExit(3000))
+            {
+                process.Kill();
+            }
+        }
+        catch
+        {
+            try { process.Kill(); } catch { }
+        }
     }
 }
 
