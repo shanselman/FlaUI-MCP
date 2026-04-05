@@ -65,15 +65,21 @@ public class SnapshotTests
     }
 
     [Fact]
-    public void WinForms_Snapshot_ContainsButtons()
+    public async Task WinForms_Snapshot_ContainsButtons()
     {
-        var builder = new SnapshotBuilder(_fixture.Elements);
-        var snapshot = builder.BuildSnapshot(_fixture.WinFormsHandle, _fixture.GetWinFormsWindow()!);
+        // Navigate to Buttons tab first — another test may have switched tabs
+        var snapshot = _fixture.TakeSnapshot(_fixture.WinFormsHandle);
+        var tabRef = TestAppFixture.FindRefInSnapshot(snapshot, "Buttons");
+        if (tabRef != null)
+        {
+            var clickTool = new ClickTool(_fixture.Elements);
+            await _fixture.CallTool(clickTool, new { @ref = tabRef });
+            await Task.Delay(100);
+        }
 
-        Assert.Contains("Click Me", snapshot);
-        Assert.Contains("Conditional Button", snapshot);
-        // Note: Conditional Button may or may not be disabled depending on test ordering
-        // (the EnabledStateChanges test toggles it). We just verify the elements exist.
+        var snapshot2 = _fixture.TakeSnapshot(_fixture.WinFormsHandle);
+        Assert.Contains("Click Me", snapshot2);
+        Assert.Contains("Conditional Button", snapshot2);
     }
 
     [Fact]
