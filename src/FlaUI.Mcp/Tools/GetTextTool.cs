@@ -59,6 +59,20 @@ public class GetTextTool : ToolBase
                 text = element.Patterns.Value.Pattern.Value.ValueOrDefault;
             }
 
+            if (string.IsNullOrEmpty(text) && element.Patterns.Selection.IsSupported)
+            {
+                var selected = element.Patterns.Selection.Pattern.Selection.ValueOrDefault;
+                if (selected != null && selected.Length > 0)
+                {
+                    text = selected[0].Properties.Name.ValueOrDefault;
+                }
+            }
+
+            if (string.IsNullOrEmpty(text) && element.Patterns.LegacyIAccessible.IsSupported)
+            {
+                text = element.Patterns.LegacyIAccessible.Pattern.Value.ValueOrDefault;
+            }
+
             // Fall back to Name property
             if (string.IsNullOrEmpty(text))
             {
