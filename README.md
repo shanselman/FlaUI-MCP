@@ -104,6 +104,10 @@ Or using `dotnet run`:
 | `windows_close` | Close a window |
 | `windows_batch` | Execute multiple actions in one call |
 
+`windows_screenshot` supports an optional `background: true` argument when a
+window `handle` is provided. This uses native background capture when available
+and falls back to the normal screenshot path if Windows returns a blank frame.
+
 ## How It Works
 
 ### The Accessibility Snapshot
