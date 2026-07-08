@@ -5,6 +5,15 @@ All notable changes to FlaUI-MCP will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- Screenshots are now correct on scaled displays (DPI > 100%). Added `SetProcessDpiAwarenessContext(PER_MONITOR_AWARE_V2)` as the first call in the process entry point so UIA coordinates match physical pixels.
+
+### Added
+- Solution file (`FlaUI.Mcp.slnx`)
+- xUnit test project (`tests/FlaUI.Mcp.Tests`) with DPI regression test
+
 ## [0.1.0] - 2024-02-02
 
 ### Added

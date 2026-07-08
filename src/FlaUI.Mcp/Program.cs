@@ -2,6 +2,8 @@ using PlaywrightWindows.Mcp;
 using PlaywrightWindows.Mcp.Core;
 using PlaywrightWindows.Mcp.Tools;
 
+DpiUtility.EnablePerMonitorV2();
+
 // Create shared services
 var sessionManager = new SessionManager();
 var elementRegistry = new ElementRegistry();
