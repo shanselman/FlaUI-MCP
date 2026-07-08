@@ -42,6 +42,11 @@ public class ScreenshotTool : ToolBase
             {
                 type = "boolean",
                 description = "Capture the entire screen (default: false)"
+            },
+            background = new
+            {
+                type = "boolean",
+                description = "Use native background window capture for a window handle, falling back to normal capture if unavailable (default: false)"
             }
         }
     };
@@ -51,10 +56,16 @@ public class ScreenshotTool : ToolBase
         var handle = GetStringArgument(arguments, "handle");
         var refId = GetStringArgument(arguments, "ref");
         var fullScreen = GetBoolArgument(arguments, "fullScreen", false);
+        var background = GetBoolArgument(arguments, "background", false);
 
         try
         {
             CaptureImage capture;
+
+            if (background && (fullScreen || !string.IsNullOrEmpty(refId) || string.IsNullOrEmpty(handle)))
+            {
+                return Task.FromResult(ErrorResult("background capture requires a window handle and cannot be combined with ref or fullScreen"));
+            }
 
             if (fullScreen)
             {
@@ -76,6 +87,12 @@ public class ScreenshotTool : ToolBase
                 {
                     return Task.FromResult(ErrorResult($"Window not found: {handle}"));
                 }
+
+                if (background && NativeWindowCapture.TryCaptureWindow(window, out var backgroundImage, out _))
+                {
+                    return Task.FromResult(ImageResult(backgroundImage, "image/png"));
+                }
+
                 capture = Capture.Element(window);
             }
             else
