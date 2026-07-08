@@ -102,9 +102,13 @@ public class ScreenshotTool : ToolBase
                 capture = Capture.Element(current);
             }
 
-            using var stream = new MemoryStream();
-            capture.Bitmap.Save(stream, System.Drawing.Imaging.ImageFormat.Png);
-            var imageData = stream.ToArray();
+            byte[] imageData;
+            using (capture)
+            {
+                using var stream = new MemoryStream();
+                capture.Bitmap.Save(stream, System.Drawing.Imaging.ImageFormat.Png);
+                imageData = stream.ToArray();
+            }
 
             return Task.FromResult(ImageResult(imageData, "image/png"));
         }
