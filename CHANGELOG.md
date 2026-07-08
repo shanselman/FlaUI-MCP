@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Solution file (`FlaUI.Mcp.slnx`)
 - xUnit test project (`tests/FlaUI.Mcp.Tests`) with DPI regression test
+- `windows_send_keys` MCP tool for sending key presses and key chords.
 
 ## [0.1.0] - 2024-02-02
 
