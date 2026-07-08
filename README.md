@@ -57,6 +57,15 @@ Agent: Calculate 3 × 3
 
 Download the latest release from [Releases](https://github.com/shanselman/FlaUI-MCP/releases) and extract to a folder.
 
+Choose the ZIP that matches your machine:
+
+| Asset | Use when |
+|-------|----------|
+| `FlaUI-MCP-win-x64-*-self-contained.zip` | 64-bit Windows, no .NET runtime required |
+| `FlaUI-MCP-win-x64-*.zip` | 64-bit Windows with .NET 8 Runtime already installed |
+| `FlaUI-MCP-win-arm64-*-self-contained.zip` | Windows on ARM64, no .NET runtime required |
+| `FlaUI-MCP-win-arm64-*.zip` | Windows on ARM64 with .NET 8 Runtime already installed |
+
 ### Configure MCP Client
 
 Add to your MCP configuration (e.g., `~/.copilot/mcp-config.json`):
@@ -112,6 +121,69 @@ It can also save screenshots with `savePath`, which must be an absolute local
 
 Tool calls have a 30-second timeout so a blocked UI Automation provider or modal
 dialog returns an actionable error instead of hanging the MCP server forever.
+
+### Tool Examples
+
+Send a keyboard chord to a target element:
+
+```json
+{
+  "ref": "w1e5",
+  "chord": "Ctrl+A"
+}
+```
+
+Send a sequence of key presses or chords:
+
+```json
+{
+  "keys": ["Ctrl+A", "Delete", "Enter"]
+}
+```
+
+Capture a window using opt-in background capture:
+
+```json
+{
+  "handle": "w1",
+  "background": true
+}
+```
+
+Save a screenshot to disk without replacing existing files:
+
+```json
+{
+  "handle": "w1",
+  "savePath": "C:\\Temp\\capture.png"
+}
+```
+
+Replace an existing screenshot file explicitly:
+
+```json
+{
+  "handle": "w1",
+  "savePath": "C:\\Temp\\capture.png",
+  "overwrite": true
+}
+```
+
+### Safety and Limitations
+
+- Keyboard input is focus-dependent. When you use `windows_send_keys`, the tool
+  focuses the supplied `ref` first when possible, but Windows still sends keys to
+  the active keyboard focus.
+- `windows_screenshot` `background: true` is only valid with a window `handle`.
+  If native background capture returns a blank frame, FlaUI-MCP falls back to the
+  normal capture path.
+- `savePath` accepts absolute local `.png` paths only. UNC paths, device paths,
+  non-PNG extensions, and existing files without `overwrite: true` are rejected.
+- Desktop integration tests require an interactive Windows session because they
+  launch real WinForms and WPF windows.
+- A timeout error means the MCP request returned, but a blocked Windows UI
+  Automation provider or modal dialog may still need to be dismissed before
+  retrying the operation.
 
 ## How It Works
 
