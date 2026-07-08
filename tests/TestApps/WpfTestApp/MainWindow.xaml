@@ -1,0 +1,167 @@
+<Window x:Class="WpfTestApp.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="FlaUI-MCP WPF Test App"
+        Width="800" Height="600"
+        WindowStartupLocation="CenterScreen"
+        x:Name="MainWindow1">
+    <TabControl x:Name="MainTabs" AutomationProperties.Name="Main Tabs">
+
+        <!-- Tab 1: Buttons and state changes -->
+        <TabItem Header="Buttons" x:Name="ButtonsTab" AutomationProperties.AutomationId="ButtonsTab">
+            <StackPanel Margin="10" Orientation="Vertical">
+                <Button Content="Click Me" x:Name="ClickMeButton" Click="ClickMe_Click"
+                        AutomationProperties.AutomationId="ClickMeButton" Margin="0,0,0,5"
+                        HorizontalAlignment="Left" Padding="10,5"/>
+                <TextBlock x:Name="ClickCountLabel" Text="Click count: 0"
+                           AutomationProperties.AutomationId="ClickCountLabel" Margin="0,0,0,15"/>
+
+                <CheckBox Content="Enable the button below" x:Name="EnableCheckbox"
+                          AutomationProperties.AutomationId="EnableCheckbox"
+                          Checked="EnableCheckbox_Changed" Unchecked="EnableCheckbox_Changed"
+                          Margin="0,0,0,5"/>
+                <Button Content="Conditional Button" x:Name="ConditionalButton" IsEnabled="False"
+                        AutomationProperties.AutomationId="ConditionalButton"
+                        HorizontalAlignment="Left" Padding="10,5" Margin="0,0,0,15"/>
+
+                <GroupBox Header="Radio Group" x:Name="RadioGroup" Margin="0,0,0,10"
+                          AutomationProperties.AutomationId="RadioGroup">
+                    <StackPanel Margin="5">
+                        <RadioButton Content="Option A" x:Name="RadioA" IsChecked="True"
+                                     AutomationProperties.AutomationId="RadioA"/>
+                        <RadioButton Content="Option B" x:Name="RadioB"
+                                     AutomationProperties.AutomationId="RadioB"/>
+                        <RadioButton Content="Option C" x:Name="RadioC"
+                                     AutomationProperties.AutomationId="RadioC"/>
+                    </StackPanel>
+                </GroupBox>
+            </StackPanel>
+        </TabItem>
+
+        <!-- Tab 2: Form inputs -->
+        <TabItem Header="Forms" x:Name="FormsTab" AutomationProperties.AutomationId="FormsTab">
+            <Grid Margin="10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <Label Content="Name:" Grid.Row="0" VerticalAlignment="Center"/>
+                <TextBox x:Name="NameTextBox" Grid.Row="0" Grid.Column="1" Margin="5"
+                         AutomationProperties.Name="Name"
+                         AutomationProperties.AutomationId="NameTextBox"/>
+
+                <Label Content="Email:" Grid.Row="1" VerticalAlignment="Center"/>
+                <TextBox x:Name="EmailTextBox" Grid.Row="1" Grid.Column="1" Margin="5"
+                         AutomationProperties.Name="Email"
+                         AutomationProperties.AutomationId="EmailTextBox"/>
+
+                <Label Content="Status:" Grid.Row="2" VerticalAlignment="Center"/>
+                <ComboBox x:Name="StatusComboBox" Grid.Row="2" Grid.Column="1" Margin="5"
+                          AutomationProperties.Name="Status"
+                          AutomationProperties.AutomationId="StatusComboBox"
+                          SelectedIndex="0">
+                    <ComboBoxItem Content="Active"/>
+                    <ComboBoxItem Content="Inactive"/>
+                    <ComboBoxItem Content="Pending"/>
+                </ComboBox>
+
+                <Label Content="Priority:" Grid.Row="3" VerticalAlignment="Center"/>
+                <Slider x:Name="PrioritySlider" Grid.Row="3" Grid.Column="1" Margin="5"
+                        Minimum="0" Maximum="10" Value="5" TickFrequency="1" IsSnapToTickEnabled="True"
+                        AutomationProperties.Name="Priority"
+                        AutomationProperties.AutomationId="PrioritySlider"/>
+
+                <Label Content="Notes:" Grid.Row="4" VerticalAlignment="Top"/>
+                <TextBox x:Name="NotesTextBox" Grid.Row="4" Grid.Column="1" Margin="5"
+                         Height="80" TextWrapping="Wrap" AcceptsReturn="True"
+                         VerticalScrollBarVisibility="Auto"
+                         AutomationProperties.Name="Notes"
+                         AutomationProperties.AutomationId="NotesTextBox"/>
+
+                <Label Content="Result:" Grid.Row="5" VerticalAlignment="Center"/>
+                <TextBox x:Name="ResultTextBox" Grid.Row="5" Grid.Column="1" Margin="5"
+                         IsReadOnly="True" Text="Computed value here"
+                         AutomationProperties.Name="Result"
+                         AutomationProperties.AutomationId="ResultTextBox"/>
+            </Grid>
+        </TabItem>
+
+        <!-- Tab 3: DataGrid -->
+        <TabItem Header="Grid" x:Name="GridTab" AutomationProperties.AutomationId="GridTab">
+            <DockPanel Margin="10">
+                <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,5,0,0">
+                    <TextBlock x:Name="GridSelectionLabel" Text="0 items selected"
+                               AutomationProperties.AutomationId="GridSelectionLabel"
+                               VerticalAlignment="Center" Margin="0,0,10,0"/>
+                    <Button Content="Select All" x:Name="GridSelectAllButton"
+                            AutomationProperties.AutomationId="GridSelectAllButton"
+                            Click="GridSelectAll_Click" Margin="0,0,5,0" Padding="10,3"/>
+                    <Button Content="Clear Selection" x:Name="GridClearButton" IsEnabled="False"
+                            AutomationProperties.AutomationId="GridClearButton"
+                            Click="GridClear_Click" Padding="10,3"/>
+                </StackPanel>
+                <DataGrid x:Name="TestDataGrid" AutoGenerateColumns="False"
+                          AutomationProperties.Name="Test Data"
+                          AutomationProperties.AutomationId="TestDataGrid"
+                          CanUserAddRows="False" SelectionMode="Single"
+                          IsReadOnly="False">
+                    <DataGrid.Columns>
+                        <DataGridCheckBoxColumn Header="Select" Binding="{Binding Selected}" Width="60"/>
+                        <DataGridTextColumn Header="ID" Binding="{Binding ID}" IsReadOnly="True" Width="100"/>
+                        <DataGridTextColumn Header="Name" Binding="{Binding Name}" IsReadOnly="True" Width="*"/>
+                        <DataGridTextColumn Header="Category" Binding="{Binding Category}" IsReadOnly="True" Width="120"/>
+                        <DataGridTextColumn Header="Value" Binding="{Binding Value}" IsReadOnly="True" Width="100"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </DockPanel>
+        </TabItem>
+
+        <!-- Tab 4: TreeView -->
+        <TabItem Header="Trees" x:Name="TreesTab" AutomationProperties.AutomationId="TreesTab">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <TreeView x:Name="TestTreeView" Margin="10"
+                          AutomationProperties.Name="Category Tree"
+                          AutomationProperties.AutomationId="TestTreeView">
+                    <TreeViewItem Header="Fruits" IsExpanded="True">
+                        <TreeViewItem Header="Apple"/>
+                        <TreeViewItem Header="Banana"/>
+                        <TreeViewItem Header="Cherry"/>
+                    </TreeViewItem>
+                    <TreeViewItem Header="Vegetables" IsExpanded="True">
+                        <TreeViewItem Header="Carrot"/>
+                        <TreeViewItem Header="Broccoli"/>
+                    </TreeViewItem>
+                    <TreeViewItem Header="Grains" IsExpanded="True">
+                        <TreeViewItem Header="Rice"/>
+                        <TreeViewItem Header="Wheat"/>
+                        <TreeViewItem Header="Oats"/>
+                    </TreeViewItem>
+                </TreeView>
+                <ListView x:Name="TestListView" Grid.Column="1" Margin="10"
+                          AutomationProperties.Name="Item List"
+                          AutomationProperties.AutomationId="TestListView">
+                    <ListView.View>
+                        <GridView>
+                            <GridViewColumn Header="Name" Width="150" DisplayMemberBinding="{Binding Name}"/>
+                            <GridViewColumn Header="Type" Width="100" DisplayMemberBinding="{Binding Type}"/>
+                            <GridViewColumn Header="Size" Width="80" DisplayMemberBinding="{Binding Size}"/>
+                        </GridView>
+                    </ListView.View>
+                </ListView>
+            </Grid>
+        </TabItem>
+    </TabControl>
+</Window>

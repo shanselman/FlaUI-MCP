@@ -4,5 +4,8 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/FlaUI.Mcp.Tests/FlaUI.Mcp.Tests.csproj" />
+    <Project Path="tests/FlaUI.Mcp.IntegrationTests/FlaUI.Mcp.IntegrationTests.csproj" />
+    <Project Path="tests/TestApps/WinFormsTestApp/WinFormsTestApp.csproj" />
+    <Project Path="tests/TestApps/WpfTestApp/WpfTestApp.csproj" />
   </Folder>
 </Solution>

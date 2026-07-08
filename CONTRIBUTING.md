@@ -38,8 +38,11 @@ ZIP files can be reviewed before publishing.
 ### Testing
 
 ```powershell
-# Run the MCP server
-dotnet run --project src/FlaUI.Mcp
+# Unit tests
+dotnet test tests\FlaUI.Mcp.Tests
+
+# Desktop integration tests; requires an interactive Windows session
+dotnet test tests\FlaUI.Mcp.IntegrationTests
 
 # In another terminal, test with a JSON-RPC request
 echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05"}}' | dotnet run --project src/FlaUI.Mcp
