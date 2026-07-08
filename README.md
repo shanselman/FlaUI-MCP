@@ -107,6 +107,8 @@ Or using `dotnet run`:
 `windows_screenshot` supports an optional `background: true` argument when a
 window `handle` is provided. This uses native background capture when available
 and falls back to the normal screenshot path if Windows returns a blank frame.
+It can also save screenshots with `savePath`, which must be an absolute local
+`.png` path. Existing files are not replaced unless `overwrite: true` is set.
 
 ## How It Works
 

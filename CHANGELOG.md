@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - xUnit test project (`tests/FlaUI.Mcp.Tests`) with DPI regression test
 - `windows_send_keys` MCP tool for sending key presses and key chords.
 - Opt-in `background` mode for `windows_screenshot` handle captures, with blank-frame fallback to the normal capture path.
+- `savePath` and `overwrite` options for `windows_screenshot`, with local PNG path validation and atomic writes.
 
 ## [0.1.0] - 2024-02-02
 

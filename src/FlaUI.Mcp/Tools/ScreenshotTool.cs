@@ -47,6 +47,16 @@ public class ScreenshotTool : ToolBase
             {
                 type = "boolean",
                 description = "Use native background window capture for a window handle, falling back to normal capture if unavailable (default: false)"
+            },
+            savePath = new
+            {
+                type = "string",
+                description = "Absolute local .png file path to save the screenshot. UNC and device paths are rejected."
+            },
+            overwrite = new
+            {
+                type = "boolean",
+                description = "Allow savePath to replace an existing file (default: false)"
             }
         }
     };
@@ -57,6 +67,13 @@ public class ScreenshotTool : ToolBase
         var refId = GetStringArgument(arguments, "ref");
         var fullScreen = GetBoolArgument(arguments, "fullScreen", false);
         var background = GetBoolArgument(arguments, "background", false);
+        var savePath = GetStringArgument(arguments, "savePath");
+        var overwrite = GetBoolArgument(arguments, "overwrite", false);
+
+        if (!TryNormalizeSavePath(savePath, overwrite, out var normalizedSavePath, out var pathError))
+        {
+            return Task.FromResult(ErrorResult(pathError));
+        }
 
         try
         {
@@ -90,7 +107,7 @@ public class ScreenshotTool : ToolBase
 
                 if (background && NativeWindowCapture.TryCaptureWindow(window, out var backgroundImage, out _))
                 {
-                    return Task.FromResult(ImageResult(backgroundImage, "image/png"));
+                    return Task.FromResult(BuildScreenshotResult(backgroundImage, normalizedSavePath, overwrite));
                 }
 
                 capture = Capture.Element(window);
@@ -127,11 +144,104 @@ public class ScreenshotTool : ToolBase
                 imageData = stream.ToArray();
             }
 
-            return Task.FromResult(ImageResult(imageData, "image/png"));
+            return Task.FromResult(BuildScreenshotResult(imageData, normalizedSavePath, overwrite));
         }
         catch (Exception ex)
         {
             return Task.FromResult(ErrorResult($"Failed to capture screenshot: {ex.Message}"));
         }
+    }
+
+    internal static bool TryNormalizeSavePath(string? savePath, bool overwrite, out string? normalizedPath, out string error)
+    {
+        normalizedPath = null;
+        error = "";
+
+        if (string.IsNullOrWhiteSpace(savePath))
+        {
+            return true;
+        }
+
+        if (!Path.IsPathFullyQualified(savePath))
+        {
+            error = $"savePath must be an absolute local path: {savePath}";
+            return false;
+        }
+
+        if (savePath.StartsWith(@"\\") || savePath.StartsWith(@"\\?\") || savePath.StartsWith(@"\\.\"))
+        {
+            error = "savePath must be a local drive path; UNC and device paths are not allowed";
+            return false;
+        }
+
+        string fullPath;
+        try
+        {
+            fullPath = Path.GetFullPath(savePath);
+        }
+        catch (Exception ex)
+        {
+            error = $"savePath is invalid: {ex.Message}";
+            return false;
+        }
+
+        if (!string.Equals(Path.GetExtension(fullPath), ".png", StringComparison.OrdinalIgnoreCase))
+        {
+            error = "savePath must end with .png";
+            return false;
+        }
+
+        if (File.Exists(fullPath) && !overwrite)
+        {
+            error = $"savePath already exists; pass overwrite=true to replace it: {fullPath}";
+            return false;
+        }
+
+        normalizedPath = fullPath;
+        return true;
+    }
+
+    private static McpToolResult BuildScreenshotResult(byte[] imageData, string? savePath, bool overwrite)
+    {
+        if (string.IsNullOrEmpty(savePath))
+        {
+            return ImageResult(imageData, "image/png");
+        }
+
+        try
+        {
+            var directory = Path.GetDirectoryName(savePath);
+            if (!string.IsNullOrEmpty(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
+
+            var tempPath = Path.Combine(directory ?? Directory.GetCurrentDirectory(), $"{Path.GetFileName(savePath)}.{Guid.NewGuid():N}.tmp");
+            try
+            {
+                File.WriteAllBytes(tempPath, imageData);
+                File.Move(tempPath, savePath, overwrite);
+            }
+            finally
+            {
+                if (File.Exists(tempPath))
+                {
+                    File.Delete(tempPath);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            return ErrorResult($"Failed to save screenshot to {savePath}: {ex.Message}");
+        }
+
+        return new McpToolResult
+        {
+            Content = new List<McpContent>
+            {
+                new() { Type = "text", Text = $"Screenshot saved to {savePath}" },
+                new() { Type = "image", Data = Convert.ToBase64String(imageData), MimeType = "image/png" }
+            }
+        };
     }
 }
