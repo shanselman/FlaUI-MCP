@@ -154,6 +154,16 @@ dotnet build src/FlaUI.Mcp
 dotnet run --project src/FlaUI.Mcp
 ```
 
+### Testing
+
+```powershell
+# Unit tests
+dotnet test tests\FlaUI.Mcp.Tests
+
+# Desktop integration tests; requires an interactive Windows session
+dotnet test tests\FlaUI.Mcp.IntegrationTests
+```
+
 ## Architecture
 
 ```
