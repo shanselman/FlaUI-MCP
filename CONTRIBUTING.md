@@ -25,6 +25,16 @@ cd src/FlaUI.Mcp
 dotnet build
 ```
 
+The same build can be run from GitHub Actions with the **Build** workflow's
+manual dispatch button. Pull requests and pushes to `main` also run the build.
+
+### Releasing
+
+Releases are created by the **Release** workflow. Maintainers can either push a
+semantic version tag such as `v0.1.1`, or run the workflow manually and provide
+the tag name. Manual releases default to draft so the generated x64 and ARM64
+ZIP files can be reviewed before publishing.
+
 ### Testing
 
 ```powershell
