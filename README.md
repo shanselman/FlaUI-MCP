@@ -110,6 +110,9 @@ and falls back to the normal screenshot path if Windows returns a blank frame.
 It can also save screenshots with `savePath`, which must be an absolute local
 `.png` path. Existing files are not replaced unless `overwrite: true` is set.
 
+Tool calls have a 30-second timeout so a blocked UI Automation provider or modal
+dialog returns an actionable error instead of hanging the MCP server forever.
+
 ## How It Works
 
 ### The Accessibility Snapshot
