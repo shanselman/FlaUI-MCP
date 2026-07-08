@@ -4,6 +4,22 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Release tag to create, for example v0.1.1'
+        required: true
+        type: string
+      draft:
+        description: 'Create the release as a draft'
+        required: true
+        default: true
+        type: boolean
+      prerelease:
+        description: 'Mark the release as a prerelease'
+        required: true
+        default: false
+        type: boolean
 
 jobs:
   release:
@@ -24,21 +40,28 @@ jobs:
       with:
         fetch-depth: 0
 
+    - name: Determine release version
+      id: release
+      shell: pwsh
+      run: |
+        if ("${{ github.event_name }}" -eq "workflow_dispatch") {
+          $tag = "${{ inputs.tag_name }}"
+        } else {
+          $tag = "${{ github.ref_name }}"
+        }
+
+        if ($tag -notmatch '^v\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$') {
+          throw "Release tag must look like v1.2.3 or v1.2.3-prerelease; got '$tag'."
+        }
+
+        $version = $tag.Substring(1)
+        "tag=$tag" >> $env:GITHUB_OUTPUT
+        "version=$version" >> $env:GITHUB_OUTPUT
+
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: 8.0.x
-
-    - name: Install GitVersion
-      uses: gittools/actions/gitversion/setup@v1
-      with:
-        versionSpec: '5.x'
-
-    - name: Determine Version
-      id: gitversion
-      uses: gittools/actions/gitversion/execute@v1
-      with:
-        useConfigFile: true
 
     - name: Restore dependencies
       run: dotnet restore src/FlaUI.Mcp/FlaUI.Mcp.csproj
@@ -50,7 +73,7 @@ jobs:
           --runtime ${{ matrix.runtime }} `
           --self-contained true `
           --output ./publish/self-contained `
-          -p:Version=${{ steps.gitversion.outputs.semVer }} `
+          -p:Version=${{ steps.release.outputs.version }} `
           -p:PublishSingleFile=true `
           -p:IncludeNativeLibrariesForSelfExtract=true
 
@@ -61,12 +84,12 @@ jobs:
           --runtime ${{ matrix.runtime }} `
           --self-contained false `
           --output ./publish/framework-dependent `
-          -p:Version=${{ steps.gitversion.outputs.semVer }}
+          -p:Version=${{ steps.release.outputs.version }}
 
     - name: Create ZIP archives
       run: |
-        Compress-Archive -Path ./publish/self-contained/* -DestinationPath ./${{ matrix.artifact_name }}-${{ steps.gitversion.outputs.semVer }}-self-contained.zip
-        Compress-Archive -Path ./publish/framework-dependent/* -DestinationPath ./${{ matrix.artifact_name }}-${{ steps.gitversion.outputs.semVer }}.zip
+        Compress-Archive -Path ./publish/self-contained/* -DestinationPath ./${{ matrix.artifact_name }}-${{ steps.release.outputs.version }}-self-contained.zip
+        Compress-Archive -Path ./publish/framework-dependent/* -DestinationPath ./${{ matrix.artifact_name }}-${{ steps.release.outputs.version }}.zip
       shell: pwsh
 
     - name: Upload Release Artifacts
@@ -86,16 +109,29 @@ jobs:
       with:
         fetch-depth: 0
 
-    - name: Install GitVersion
-      uses: gittools/actions/gitversion/setup@v1
-      with:
-        versionSpec: '5.x'
+    - name: Determine release version
+      id: release
+      shell: bash
+      run: |
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          tag="${{ inputs.tag_name }}"
+          draft="${{ inputs.draft }}"
+          prerelease="${{ inputs.prerelease }}"
+        else
+          tag="${GITHUB_REF_NAME}"
+          draft="false"
+          prerelease="false"
+        fi
 
-    - name: Determine Version
-      id: gitversion
-      uses: gittools/actions/gitversion/execute@v1
-      with:
-        useConfigFile: true
+        if ! [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+          echo "Release tag must look like v1.2.3 or v1.2.3-prerelease; got '$tag'." >&2
+          exit 1
+        fi
+
+        echo "tag=$tag" >> "$GITHUB_OUTPUT"
+        echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
+        echo "draft=$draft" >> "$GITHUB_OUTPUT"
+        echo "prerelease=$prerelease" >> "$GITHUB_OUTPUT"
 
     - name: Download all artifacts
       uses: actions/download-artifact@v4
@@ -108,11 +144,13 @@ jobs:
       run: ls -la artifacts/
 
     - name: Create Release
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v2
       with:
-        name: FlaUI-MCP v${{ steps.gitversion.outputs.semVer }}
+        tag_name: ${{ steps.release.outputs.tag }}
+        target_commitish: ${{ github.sha }}
+        name: FlaUI-MCP ${{ steps.release.outputs.tag }}
         body: |
-          ## FlaUI-MCP v${{ steps.gitversion.outputs.semVer }}
+          ## FlaUI-MCP ${{ steps.release.outputs.tag }}
           
           An MCP server for Windows desktop automation using accessibility APIs.
           
@@ -144,5 +182,5 @@ jobs:
           
           See [README](https://github.com/shanselman/FlaUI-MCP#readme) for full documentation.
         files: artifacts/*.zip
-        draft: false
-        prerelease: false
+        draft: ${{ steps.release.outputs.draft }}
+        prerelease: ${{ steps.release.outputs.prerelease }}
