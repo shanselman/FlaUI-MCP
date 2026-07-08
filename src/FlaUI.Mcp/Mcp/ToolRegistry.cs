@@ -8,6 +8,16 @@ namespace PlaywrightWindows.Mcp;
 public class ToolRegistry
 {
     private readonly Dictionary<string, ITool> _tools = new();
+    private readonly TimeSpan _toolTimeout;
+
+    public ToolRegistry(TimeSpan? toolTimeout = null)
+    {
+        _toolTimeout = toolTimeout ?? TimeSpan.FromSeconds(30);
+        if (_toolTimeout <= TimeSpan.Zero)
+        {
+            throw new ArgumentOutOfRangeException(nameof(toolTimeout), "Tool timeout must be greater than zero.");
+        }
+    }
 
     public void RegisterTool(ITool tool)
     {
@@ -35,7 +45,32 @@ public class ToolRegistry
 
         try
         {
-            return await tool.ExecuteAsync(arguments);
+            var toolTask = Task.Run(() => tool.ExecuteAsync(arguments));
+            var timeoutTask = Task.Delay(_toolTimeout);
+
+            if (await Task.WhenAny(toolTask, timeoutTask) == timeoutTask)
+            {
+                _ = toolTask.ContinueWith(
+                    task => { _ = task.Exception; },
+                    TaskContinuationOptions.OnlyOnFaulted);
+
+                return new McpToolResult
+                {
+                    Content = new List<McpContent>
+                    {
+                        new()
+                        {
+                            Type = "text",
+                            Text = $"Tool '{name}' timed out after {(int)_toolTimeout.TotalMilliseconds}ms. " +
+                                   "A modal dialog or blocked UI Automation provider may still be running in the background. " +
+                                   "Dismiss the blocking UI and retry the request."
+                        }
+                    },
+                    IsError = true
+                };
+            }
+
+            return await toolTask;
         }
         catch (Exception ex)
         {
