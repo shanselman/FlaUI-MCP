@@ -11,13 +11,11 @@ public class SnapshotTool : ToolBase
 {
     private readonly SessionManager _sessionManager;
     private readonly ElementRegistry _elementRegistry;
-    private readonly SnapshotBuilder _snapshotBuilder;
 
     public SnapshotTool(SessionManager sessionManager, ElementRegistry elementRegistry)
     {
         _sessionManager = sessionManager;
         _elementRegistry = elementRegistry;
-        _snapshotBuilder = new SnapshotBuilder(elementRegistry);
     }
 
     public override string Name => "windows_snapshot";
@@ -36,6 +34,13 @@ public class SnapshotTool : ToolBase
             {
                 type = "string",
                 description = "Window handle from windows_launch or windows_list_windows. If omitted, uses the most recently launched window."
+            },
+            maxDepth = new
+            {
+                type = "integer",
+                description = $"Maximum number of child levels to include (default: {SnapshotBuilder.DefaultMaxDepth}).",
+                minimum = 0,
+                @default = SnapshotBuilder.DefaultMaxDepth
             }
         }
     };
@@ -46,6 +51,7 @@ public class SnapshotTool : ToolBase
 
         try
         {
+            var maxDepth = GetArgument<int?>(arguments, "maxDepth") ?? SnapshotBuilder.DefaultMaxDepth;
             FlaUI.Core.AutomationElements.Window? window = null;
 
             if (!string.IsNullOrEmpty(handle))
@@ -86,7 +92,7 @@ public class SnapshotTool : ToolBase
                 handle = _sessionManager.RegisterWindow(window);
             }
 
-            var snapshot = _snapshotBuilder.BuildSnapshot(handle!, window);
+            var snapshot = new SnapshotBuilder(_elementRegistry, maxDepth).BuildSnapshot(handle!, window);
             return Task.FromResult(TextResult(snapshot));
         }
         catch (Exception ex)

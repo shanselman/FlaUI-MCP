@@ -65,6 +65,30 @@ public class SnapshotTests
     }
 
     [Fact]
+    public async Task SnapshotTool_MaxDepth_ZeroIncludesOnlyWindow()
+    {
+        var tool = new SnapshotTool(_fixture.Session, _fixture.Elements);
+        var snapshot = await _fixture.CallTool(tool, new { handle = _fixture.WinFormsHandle, maxDepth = 0 });
+
+        Assert.Single(snapshot.Split('\n', StringSplitOptions.RemoveEmptyEntries));
+    }
+
+    [Fact]
+    public async Task BatchSnapshot_MaxDepth_ZeroIncludesOnlyWindow()
+    {
+        var tool = new BatchTool(_fixture.Session, _fixture.Elements);
+        var result = await _fixture.CallTool(tool, new
+        {
+            actions = new[]
+            {
+                new { action = "snapshot", handle = _fixture.WinFormsHandle, maxDepth = 0 }
+            }
+        });
+
+        Assert.DoesNotContain("Buttons", result);
+    }
+
+    [Fact]
     public async Task WinForms_Snapshot_ContainsButtons()
     {
         // Navigate to Buttons tab first — another test may have switched tabs

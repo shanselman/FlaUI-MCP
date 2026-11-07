@@ -9,11 +9,14 @@ namespace PlaywrightWindows.Mcp.Core;
 /// </summary>
 public class SnapshotBuilder
 {
+    public const int DefaultMaxDepth = 10;
+
     private readonly ElementRegistry _elementRegistry;
     private readonly int _maxDepth;
 
-    public SnapshotBuilder(ElementRegistry elementRegistry, int maxDepth = 10)
+    public SnapshotBuilder(ElementRegistry elementRegistry, int maxDepth = DefaultMaxDepth)
     {
+        ArgumentOutOfRangeException.ThrowIfNegative(maxDepth);
         _elementRegistry = elementRegistry;
         _maxDepth = maxDepth;
     }

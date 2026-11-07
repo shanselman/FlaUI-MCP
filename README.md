@@ -113,6 +113,10 @@ Or using `dotnet run`:
 | `windows_close` | Close a window |
 | `windows_batch` | Execute multiple actions in one call |
 
+`windows_snapshot` accepts an optional `maxDepth` argument to include more or
+fewer levels of the accessibility tree. It defaults to `10`; `windows_batch`
+snapshot actions accept the same argument.
+
 `windows_screenshot` supports an optional `background: true` argument when a
 window `handle` is provided. This uses native background capture when available
 and falls back to the normal screenshot path if Windows returns a blank frame.

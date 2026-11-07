@@ -13,13 +13,11 @@ public class BatchTool : ToolBase
 {
     private readonly SessionManager _sessionManager;
     private readonly ElementRegistry _elementRegistry;
-    private readonly SnapshotBuilder _snapshotBuilder;
 
     public BatchTool(SessionManager sessionManager, ElementRegistry elementRegistry)
     {
         _sessionManager = sessionManager;
         _elementRegistry = elementRegistry;
-        _snapshotBuilder = new SnapshotBuilder(elementRegistry);
     }
 
     public override string Name => "windows_batch";
@@ -72,6 +70,13 @@ public class BatchTool : ToolBase
                         {
                             type = "string",
                             description = "Window handle for snapshot action"
+                        },
+                        maxDepth = new
+                        {
+                            type = "integer",
+                            description = $"Maximum number of child levels to include in a snapshot (default: {SnapshotBuilder.DefaultMaxDepth}).",
+                            minimum = 0,
+                            @default = SnapshotBuilder.DefaultMaxDepth
                         }
                     },
                     required = new[] { "action" }
@@ -268,7 +273,10 @@ public class BatchTool : ToolBase
             return "No window found";
         }
 
-        var snapshot = _snapshotBuilder.BuildSnapshot(handle!, window);
+        var maxDepth = action.TryGetProperty("maxDepth", out var maxDepthProp)
+            ? maxDepthProp.GetInt32()
+            : SnapshotBuilder.DefaultMaxDepth;
+        var snapshot = new SnapshotBuilder(_elementRegistry, maxDepth).BuildSnapshot(handle!, window);
         return $"\n{snapshot}";
     }
 }
