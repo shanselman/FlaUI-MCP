@@ -15,7 +15,7 @@ Thank you for your interest in contributing to FlaUI-MCP!
 
 ### Prerequisites
 - Windows 10/11
-- .NET 8.0 SDK
+- .NET 11.0 SDK
 - Visual Studio 2022 or VS Code
 
 ### Building

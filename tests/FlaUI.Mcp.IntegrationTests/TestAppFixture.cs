@@ -102,13 +102,39 @@ public class TestAppFixture : IAsyncLifetime
 
         if (dir == null) return null;
 
-        var searchPaths = new[]
+        var appBinDir = Path.Combine(dir.FullName, "tests", "TestApps", appName, "bin");
+        if (!Directory.Exists(appBinDir))
         {
-            Path.Combine(dir.FullName, "tests", "TestApps", appName, "bin", "Debug", "net8.0-windows", $"{appName}.exe"),
-            Path.Combine(dir.FullName, "tests", "TestApps", appName, "bin", "Release", "net8.0-windows", $"{appName}.exe"),
-        };
+            return null;
+        }
 
-        return searchPaths.FirstOrDefault(File.Exists);
+        var preferredFramework = new DirectoryInfo(baseDir).Name;
+        var configurations = new[] { "Debug", "Release" };
+
+        foreach (var configuration in configurations)
+        {
+            var preferredPath = Path.Combine(
+                appBinDir,
+                configuration,
+                preferredFramework,
+                $"{appName}.exe");
+
+            if (File.Exists(preferredPath))
+            {
+                return preferredPath;
+            }
+        }
+
+        return configurations
+            .SelectMany(configuration =>
+            {
+                var configurationDir = Path.Combine(appBinDir, configuration);
+                return Directory.Exists(configurationDir)
+                    ? Directory.EnumerateFiles(configurationDir, $"{appName}.exe", SearchOption.AllDirectories)
+                    : Enumerable.Empty<string>();
+            })
+            .OrderByDescending(File.GetLastWriteTimeUtc)
+            .FirstOrDefault();
     }
 
     public Window? GetWinFormsWindow() => Session.GetWindow(WinFormsHandle);
