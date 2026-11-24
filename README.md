@@ -51,7 +51,7 @@ Agent: Calculate 3 × 3
 
 ### Prerequisites
 - Windows 10/11
-- .NET 8.0 Runtime
+- .NET 11.0 Windows Desktop Runtime
 
 ### Download Release
 
@@ -62,9 +62,9 @@ Choose the ZIP that matches your machine:
 | Asset | Use when |
 |-------|----------|
 | `FlaUI-MCP-win-x64-*-self-contained.zip` | 64-bit Windows, no .NET runtime required |
-| `FlaUI-MCP-win-x64-*.zip` | 64-bit Windows with .NET 8 Runtime already installed |
+| `FlaUI-MCP-win-x64-*.zip` | 64-bit Windows with .NET 11 Windows Desktop Runtime already installed |
 | `FlaUI-MCP-win-arm64-*-self-contained.zip` | Windows on ARM64, no .NET runtime required |
-| `FlaUI-MCP-win-arm64-*.zip` | Windows on ARM64 with .NET 8 Runtime already installed |
+| `FlaUI-MCP-win-arm64-*.zip` | Windows on ARM64 with .NET 11 Windows Desktop Runtime already installed |
 
 ### Configure MCP Client
 
@@ -253,7 +253,7 @@ dotnet test tests\FlaUI.Mcp.IntegrationTests
                               │ MCP Protocol (JSON-RPC over stdio)
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  FlaUI-MCP Server (.NET 8)                                      │
+│  FlaUI-MCP Server (.NET 11)                                     │
 │  - Implements MCP tool handlers                                 │
 │  - Builds agent-friendly accessibility snapshots                │
 │  - Maps element refs ↔ AutomationElements                       │
